@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>최지운 ㅎㅇ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h2>미세먼지 정보</h2>
+    <canvas id="dustChart" width="800" height="400"></canvas>
+    <h2>수온 정보 (<span id="oceanDate"></span>)</h2>
+    <canvas id="oceanChart" width="800" height="400"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script>
+        const dat = moment().format('YYYYMMDD');
+        const day = moment().format('YYYY-MM-DD');
+        const apiKey = "M5SUhBLmvkuLmqZZuipln5DVQQjiJyg%2BwJp3e%2FqniBvaojB81dWOiLnNrSPQfhr0TROfbf36g7iVRdGTaZpQ5Q%3D%3D";
+        const ocean = "MbgAdLkH6dfXU0huefdpg==";    
+
+        // 미세먼지 정보 불러오기 및 시각화
+        async function fetchDust() {
+            const url = `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty?serviceKey=${apiKey}&returnType=json&sidoName=서울`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.response && data.response.body && data.response.body.items) {
+                    const items = data.response.body.items.slice(0, 10); // 10개 측정소
+                    const labels = items.map(item => item.stationName);
+                    const pm10 = items.map(item => Number(item.pm10Value));
+                    const o3 = items.map(item => Number(item.o3Grade));
+
+                    const ctx = document.getElementById('dustChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: '미세먼지',
+                                    data: pm10,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.5)'
+                                },
+                                {
+                                    label: '오존지수',
+                                    data: o3,
+                                    backgroundColor: 'rgba(255, 99, 132, 0.5)'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: false,
+                            scales: {
+                                y: { beginAtZero: true }
+                            }
+                        }
+                    });
+                }
+            } catch (e) {
+                // 에러 처리    
+            }
+        }
+
+        // 수온 정보 불러오기 및 시각화
+            async function fetchOcean() {
+                const url = `https://www.khoa.go.kr/api/oceangrid/tidalBuTemp/search.do?ServiceKey=${ocean}&ObsCode=KG_0021&Date=${dat}&ResultType=json`;
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    // 날짜 표시
+                    document.getElementById('oceanDate').textContent = day;
+
+                    // 시각화: 시간별 수온 값
+                    if (data.result && data.result.data) {
+                        const items = data.result.data;
+                        // 시간(가로축)에서 날짜 제거하고 시:분만 추출
+                        const labels = items.map(item => {
+                            // 예: "2024-07-14 13:00" -> "13:00"
+                            const timeStr = item.record_time || item.tm;
+                            return timeStr.split(' ')[1] || timeStr;
+                        });
+                        const temps = items.map(item => Number(item.water_temp || item.tl));
+
+                        const ctx = document.getElementById('oceanChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: '수온(℃)',
+                                    data: temps,
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                                    fill: true,
+                                    tension: 0.3
+                                }]
+                            },
+                            options: {
+                                responsive: false,
+                                scales: {
+                                    x: {
+                                        title: {
+                                            display: true,
+                                            text: '시간'
+                                        }
+                                    },
+                                    y: {
+                                        title: {
+                                            display: true,
+                                            text: '수온(℃)'
+                                        },
+                                        beginAtZero: false
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } catch (e) {
+                    // 에러 처리
+                }
+            }
+        fetchDust();
+        fetchOcean();
+    </script>
+</body>
+</html>
